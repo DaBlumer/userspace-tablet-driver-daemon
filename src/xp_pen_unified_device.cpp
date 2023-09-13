@@ -113,7 +113,18 @@ void xp_pen_unified_device::handleDigitizerEvent(libusb_device_handle *handle, u
         pressure += offsetPressure;
 
         const bool isInProximity = stylusTipAndButton.test(5) && !stylusTipAndButton.test(4);
-        const bool isEraserBit = stylusTipAndButton.test(3);
+        //const bool isEraserBit = stylusTipAndButton.test(3);
+        
+        
+        bool has_switched = false;
+        if (!stylusTipAndButton.test(2)) {
+            isStylusBtn2Pressed = false;
+        } else if (!isStylusBtn2Pressed) {
+            isStylusBtn2Pressed = true;
+            stylusEraserIsOn = !stylusEraserIsOn;
+            has_switched = true;
+        }
+        const bool isEraserBit = stylusEraserIsOn;
 
         const bool hasEraserEnteredProximity = isInProximity && isEraserBit;
         const bool hasPenEnteredProximity = isInProximity && !isEraserBit;
@@ -122,9 +133,15 @@ void xp_pen_unified_device::handleDigitizerEvent(libusb_device_handle *handle, u
 
         // Handle pen coming into/out of proximity
         if (hasEraserEnteredProximity) {
+            if (has_switched) handlePenLeftProximity(handle);
+            uinput_send(uinputPens[handle], EV_SYN, SYN_REPORT, 1);
             handleEraserEnteredProximity(handle);
+            uinput_send(uinputPens[handle], EV_SYN, SYN_REPORT, 1);
         } else if (hasPenEnteredProximity) {
+            if (has_switched) handleEraserLeftProximity(handle);
+            uinput_send(uinputPens[handle], EV_SYN, SYN_REPORT, 1);
             handlePenEnteredProximity(handle);
+            uinput_send(uinputPens[handle], EV_SYN, SYN_REPORT, 1);
         } else if (hasPenExitedProximity) {
             handlePenLeftProximity(handle);
         } else if (hasEraserExitedProximity) {
@@ -146,7 +163,7 @@ void xp_pen_unified_device::handleDigitizerEvent(libusb_device_handle *handle, u
         if (stylusTipAndButton.test(1)) {
             handleStylusButtonsPressed(handle, BTN_STYLUS);
         } else if (stylusTipAndButton.test(2)) {
-            handleStylusButtonsPressed(handle, BTN_STYLUS2);
+            //handleStylusButtonsPressed(handle, BTN_STYLUS2);
         } else if (stylusButtonPressed > 0) {
             handleStylusButtonUnpressed(handle);
         }
