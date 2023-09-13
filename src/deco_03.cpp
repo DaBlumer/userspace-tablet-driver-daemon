@@ -87,19 +87,44 @@ bool deco_03::handleTransferData(libusb_device_handle *handle, unsigned char *da
     return true;
 }
 
+void deco_03::handlePadButtonPressed(libusb_device_handle *handle, int button) {
+    auto iterator = padButtonDisabled.find(button);
+    if (1 || iterator == padButtonDisabled.end()) {
+        auto padMap = padMapping.getPadMap(padButtonAliases[button]);
+        for (auto pmap: padMap) {
+            uinput_send(uinputPads[handle], pmap.event_type, pmap.event_value, 1);
+        }
+        lastPressedButton[handle] = button;
+    }
+}
+
+void deco_03::handlePadButtonUnpressed(libusb_device_handle *handle, int button) {
+    if (1 || lastPressedButton.find(handle) != lastPressedButton.end() && lastPressedButton[handle] > 0) {
+        auto padMap = padMapping.getPadMap(padButtonAliases[button]);
+        for (auto pmap : padMap) {
+            uinput_send(uinputPads[handle], pmap.event_type, pmap.event_value, 0);
+        }
+        lastPressedButton[handle] = -1;
+    }
+}
+
 void deco_03::handleFrameEvent(libusb_device_handle *handle, unsigned char *data, size_t dataLen) {
     if (data[1] >= 0xf0) {
         long button = data[2];
         // Only 8 buttons on this device
         long position = ffsl(data[2]);
-
-        if (button != 0) {
-            handlePadButtonPressed(handle, position);
-        } else {
-            handlePadButtonUnpressed(handle);
+        
+        for (int i = 0; i<=7; ++i) {
+            if ( (button&(1<<i)) && !(pressedPadButtons&(1<<i))) {
+                handlePadButtonPressed(handle, i);
+                uinput_send(uinputPads[handle], EV_SYN, SYN_REPORT, 1);
+            } else if (!(button&(1<<i)) && (pressedPadButtons&(1<<i))) {
+                handlePadButtonUnpressed(handle, i);
+                uinput_send(uinputPads[handle], EV_SYN, SYN_REPORT, 1);
+            } 
         }
-
-        uinput_send(uinputPads[handle], EV_SYN, SYN_REPORT, 1);
+        
+        pressedPadButtons = button;
     }
 }
 

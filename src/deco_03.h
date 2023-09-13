@@ -33,6 +33,10 @@ private:
     void handleFrameEvent(libusb_device_handle* handle, unsigned char* data, size_t dataLen);
     void handleNonUnifiedDialEvent(libusb_device_handle* handle, unsigned char* data, size_t dataLen);
     
+    void handlePadButtonUnpressed(libusb_device_handle *handle, int button) ;
+    void handlePadButtonPressed(libusb_device_handle *handle, int button) override;
+    unsigned pressedPadButtons = 0;
+    
     virtual std::string getInitKey() override;
 };
 
